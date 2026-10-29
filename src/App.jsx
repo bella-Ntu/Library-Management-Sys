@@ -61,9 +61,9 @@ function App() {
   const [authMode, setAuthMode] = useState("login");
   const [toast, setToast] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [loginForm, setLoginForm] = useState({ username: "", surname: "", password: "" });
-  const [registerForm, setRegisterForm] = useState({ username: "", surname: "", password: "" });
-  const [librarianForm, setLibrarianForm] = useState({ username: "", surname: "", password: "" });
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [registerForm, setRegisterForm] = useState({ username: "", password: "" });
+  const [librarianForm, setLibrarianForm] = useState({ username: "", password: "" });
   const [librarianCount, setLibrarianCount] = useState(0);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -153,7 +153,7 @@ function App() {
   function logout() {
     setSession(null);
     setPage("Overview");
-    setLoginForm({ username: "", surname: "", password: "" });
+    setLoginForm({ username: "", password: "" });
     setShowLoginForm(false);
     api.logout().catch((error) => notify(error.message));
   }
@@ -166,7 +166,7 @@ function App() {
       setPage("Overview");
       setShowLoginForm(false);
       setAuthMode("login");
-      setLoginForm({ username: "", surname: "", password: "" });
+      setLoginForm({ username: "", password: "" });
       notify("Signed in successfully.");
     } catch (error) {
       notify(error.message);
@@ -182,7 +182,7 @@ function App() {
       setPage("Overview");
       setShowLoginForm(false);
       setAuthMode("login");
-      setRegisterForm({ username: "", surname: "", password: "" });
+      setRegisterForm({ username: "", password: "" });
       notify("Student account created.");
     } catch (error) {
       notify(error.message);
@@ -358,16 +358,15 @@ function App() {
       return;
     }
     const username = librarianForm.username.trim();
-    const surname = librarianForm.surname.trim();
     const password = librarianForm.password.trim();
-    if (!username || !surname || password.length < 8) {
-      notify("Enter a username, surname, and password with at least 8 characters.");
+    if (!username || password.length < 8) {
+      notify("Enter a username and password with at least 8 characters.");
       return;
     }
     try {
-      const result = await api.createLibrarian({ username, surname, password });
+      const result = await api.createLibrarian({ username, password });
       setLibrarianCount(result.count);
-      setLibrarianForm({ username: "", surname: "", password: "" });
+      setLibrarianForm({ username: "", password: "" });
       notify("Librarian account created.");
     } catch (error) {
       notify(error.message);
@@ -483,7 +482,18 @@ function App() {
         )}
         <section className="section-block featured-section">
           <div className="section-heading"><div><div className="eyebrow">A GOOD PLACE TO START</div><h2>Little staff <em>favorites.</em></h2></div><button className="text-link" onClick={() => openPage(isAdmin ? "Collection" : "Browse books")}>See every book <Icon name="arrow" size={15} /></button></div>
-          <div className="book-grid">{featuredBooks.map(renderBookCard)}</div>
+          {featuredBooks.length ? (
+            <div className="book-grid">{featuredBooks.map(renderBookCard)}</div>
+          ) : (
+            <div className="featured-empty">
+              <span className="featured-empty-icon"><Icon name="spark" size={20} /></span>
+              <div>
+                <h3>{apiError ? "We’ll save you a place." : "A good story is on its way."}</h3>
+                <p>{apiError ? "Staff favorites will appear when the library reconnects." : "Staff favorites will show up here once they’re added to the collection."}</p>
+              </div>
+              <button className="text-link" onClick={() => openPage(isAdmin ? "Collection" : "Browse books")}>Browse the collection <Icon name="arrow" size={15} /></button>
+            </div>
+          )}
         </section>
         {isAdmin && (
           <section className="section-block admin-requests">
@@ -536,7 +546,6 @@ function App() {
           </div>
           <form className="book-form staff-form" onSubmit={addLibrarian}>
             <label>Username<input value={librarianForm.username} onChange={(event) => setLibrarianForm((current) => ({ ...current, username: event.target.value }))} required /></label>
-            <label>Surname<input value={librarianForm.surname} onChange={(event) => setLibrarianForm((current) => ({ ...current, surname: event.target.value }))} required /></label>
             <label>Temporary password<input type="password" minLength="8" value={librarianForm.password} onChange={(event) => setLibrarianForm((current) => ({ ...current, password: event.target.value }))} required /></label>
             <button type="submit" className="button button-dark"><Icon name="plus" size={16} /> Create librarian account</button>
           </form>
@@ -572,7 +581,6 @@ function App() {
           ) : isRegister ? (
             <form className="book-form" onSubmit={handleRegistration}>
               <label>Username<input autoComplete="username" value={registerForm.username} onChange={(event) => setRegisterForm((current) => ({ ...current, username: event.target.value }))} minLength="3" maxLength="32" required /></label>
-              <label>Surname<input autoComplete="family-name" value={registerForm.surname} onChange={(event) => setRegisterForm((current) => ({ ...current, surname: event.target.value }))} required /></label>
               <label>Password<input type="password" autoComplete="new-password" value={registerForm.password} onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))} minLength="8" required /></label>
               <div className="form-actions">
                 <button type="button" className="text-link" onClick={() => setAuthMode("login")}>Already have an account? Sign in</button>
@@ -587,7 +595,6 @@ function App() {
           ) : (
             <form className="book-form" onSubmit={handleLogin}>
               <label>Username<input autoComplete="username" value={loginForm.username} onChange={(event) => setLoginForm((current) => ({ ...current, username: event.target.value }))} required /></label>
-              <label>Surname<input autoComplete="family-name" value={loginForm.surname} onChange={(event) => setLoginForm((current) => ({ ...current, surname: event.target.value }))} required /></label>
               <label>Password<input type="password" autoComplete="current-password" value={loginForm.password} onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))} required /></label>
               <div className="form-actions">
                 <button type="button" className="text-link" onClick={() => setAuthMode("help")}>Forgot password?</button>
@@ -659,7 +666,7 @@ function App() {
           </div>
           </header>
         <div className="page-content">
-          {!apiReady && <div className="api-notice"><strong>{apiError ? "Library server unavailable" : "Connecting to the library…"}</strong><span>{apiError || "Loading the catalog from the database."}</span>{apiError && <button className="text-link" onClick={() => window.location.reload()}>Retry</button>}</div>}
+          {!apiReady && <div className="api-notice" role={apiError ? "alert" : "status"}><strong>{apiError ? "Library server unavailable" : "Connecting to the library…"}</strong><span>{apiError || "Loading the catalog from the database."}</span>{apiError && <button className="text-link" onClick={() => window.location.reload()}>Retry</button>}</div>}
           <div className="page-heading"><div><div className="eyebrow">{new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date()).toUpperCase()}</div><h1>{pageTitle}</h1></div>{page === "Overview" && <span className="heading-note">A good day to turn a page <span>✳</span></span>}</div>
           {renderPage()}
           <footer className="page-footer"><span>MADE FOR PEOPLE WHO LOVE A GOOD STORY</span><span>SHELF <i>·</i> THE LITTLE LIBRARY</span></footer>

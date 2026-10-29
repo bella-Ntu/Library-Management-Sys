@@ -91,22 +91,20 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/auth/register", async (req, res) => {
   const username = String(req.body.username || "").trim().toLowerCase();
-  const surname = String(req.body.surname || "").trim();
   const password = String(req.body.password || "");
-  if (!/^[a-z0-9._-]{3,32}$/.test(username) || !surname || password.length < 8) {
-    return sendError(res, 400, "Use a 3–32 character username, surname, and password with at least 8 characters.");
+  if (!/^[a-z0-9._-]{3,32}$/.test(username) || password.length < 8) {
+    return sendError(res, 400, "Use a 3–32 character username and a password with at least 8 characters.");
   }
   if (await User.exists({ username })) return sendError(res, 409, "That username is already taken.");
-  const user = await User.create({ username, surname, passwordHash: await bcrypt.hash(password, 12), role: "Student" });
+  const user = await User.create({ username, passwordHash: await bcrypt.hash(password, 12), role: "Student" });
   res.status(201).json({ user: publicUser(user) });
 });
 
 app.post("/api/auth/login", async (req, res) => {
   const username = String(req.body.username || "").trim().toLowerCase();
-  const surname = String(req.body.surname || "").trim();
   const password = String(req.body.password || "");
-  const user = await User.findOne({ username }).select("+surname +passwordHash");
-  if (!user || user.surname.toLowerCase() !== surname.toLowerCase() || !(await bcrypt.compare(password, user.passwordHash))) {
+  const user = await User.findOne({ username }).select("+passwordHash");
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return sendError(res, 401, "The sign-in details did not match.");
   }
   const token = jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -238,13 +236,12 @@ app.get("/api/librarians/count", authenticate, requireLibrarian, async (_req, re
 
 app.post("/api/librarians", authenticate, requireLibrarian, async (req, res) => {
   const username = String(req.body.username || "").trim().toLowerCase();
-  const surname = String(req.body.surname || "").trim();
   const password = String(req.body.password || "");
-  if (!/^[a-z0-9._-]{3,32}$/.test(username) || !surname || password.length < 8) {
-    return sendError(res, 400, "Use a 3–32 character username, surname, and password with at least 8 characters.");
+  if (!/^[a-z0-9._-]{3,32}$/.test(username) || password.length < 8) {
+    return sendError(res, 400, "Use a 3–32 character username and a password with at least 8 characters.");
   }
   if (await User.exists({ username })) return sendError(res, 409, "That username is already taken.");
-  const user = await User.create({ username, surname, passwordHash: await bcrypt.hash(password, 12), role: "Librarian" });
+  const user = await User.create({ username, passwordHash: await bcrypt.hash(password, 12), role: "Librarian" });
   return res.status(201).json({ user: publicUser(user), count: await User.countDocuments({ role: "Librarian" }) });
 });
 
@@ -257,7 +254,7 @@ app.use((error, _req, res, _next) => {
 });
 
 async function start() {
-  const required = ["MONGODB_URI", "JWT_SECRET", "BOOTSTRAP_LIBRARIAN_USERNAME", "BOOTSTRAP_LIBRARIAN_SURNAME", "BOOTSTRAP_LIBRARIAN_PASSWORD"];
+  const required = ["MONGODB_URI", "JWT_SECRET", "BOOTSTRAP_LIBRARIAN_USERNAME", "BOOTSTRAP_LIBRARIAN_PASSWORD"];
   const missing = required.filter((name) => !process.env[name]);
   if (missing.length) throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   if (process.env.JWT_SECRET.length < 32) throw new Error("JWT_SECRET must be at least 32 characters.");
@@ -270,7 +267,6 @@ async function start() {
   if (!existingLibrarian) {
     await User.create({
       username,
-      surname: process.env.BOOTSTRAP_LIBRARIAN_SURNAME.trim(),
       passwordHash: await bcrypt.hash(process.env.BOOTSTRAP_LIBRARIAN_PASSWORD, 12),
       role: "Librarian",
     });

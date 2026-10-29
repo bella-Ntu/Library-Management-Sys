@@ -17,9 +17,9 @@ The app uses an Express/Mongoose API for books, loans, recommendations, and acco
 
 ## Sharing MongoDB setup safely
 
-Do not paste a MongoDB URI, database password, JWT secret, or real user surname into chat or commit them to source control. Copy `.env.example` to `.env` and set values locally. `.env` is ignored by Git. Keep database credentials server-side; never add a `VITE_` prefix.
+Do not paste a MongoDB URI, database password, or JWT secret into chat or commit them to source control. Copy `.env.example` to `.env` and set values locally. `.env` is ignored by Git. Keep database credentials server-side; never add a `VITE_` prefix.
 
-The API creates `users`, `books`, `loans`, and `recommendations` collections and seeds the sample book catalog when the books collection is empty. The first librarian account is created from `BOOTSTRAP_LIBRARIAN_*` environment values; there are no default production passwords. Student accounts can register from the sign-in dialog. Additional librarian accounts can only be created by an authenticated librarian.
+The API creates `users`, `books`, `loans`, and `recommendations` collections and seeds the sample book catalog when the books collection is empty. The first librarian account is created from `BOOTSTRAP_LIBRARIAN_USERNAME` and `BOOTSTRAP_LIBRARIAN_PASSWORD`; there are no default production passwords. Student accounts can register from the sign-in dialog using a username and password. Additional librarian accounts can only be created by an authenticated librarian.
 
 If a database credential is shared accidentally, rotate it in MongoDB Atlas before using it. Share only redacted schemas and error messages.
 
