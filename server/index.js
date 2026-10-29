@@ -2,6 +2,7 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import express from "express";
+import { setServers } from "node:dns/promises";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { Book, Loan, Recommendation, User } from "./models.js";
@@ -12,19 +13,48 @@ const sessionCookie = "shelf_session";
 const sessionLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 
 const starterBooks = [
-  ["1984", "George Orwell", "1949", "Dystopian", "9780451524935", 4, "A haunting vision of a totalitarian future, George Orwell's masterwork introduced the world to Big Brother and the ever-watchful Thought Police.", true],
-  ["Pride and Prejudice", "Jane Austen", "1813", "Classic", "9780141439518", 3, "Elizabeth Bennet navigates questions of manners, upbringing, morality, and marriage in Jane Austen's beloved comedy of errors.", true],
-  ["The Great Gatsby", "F. Scott Fitzgerald", "1925", "Classic", "9780743273565", 2, "A portrait of the Jazz Age in all its decadence and excess, and of Jay Gatsby's impossible dream.", true],
-  ["To Kill a Mockingbird", "Harper Lee", "1960", "Fiction", "9780061120084", 3, "Through the eyes of Scout Finch, a small Alabama town confronts injustice, compassion, and the loss of innocence.", false],
-  ["Dune", "Frank Herbert", "1965", "Science fiction", "9780441172719", 2, "On the desert planet Arrakis, Paul Atreides is drawn into a political and ecological struggle that will change the universe.", true],
-  ["The Hobbit", "J.R.R. Tolkien", "1937", "Fantasy", "9780547928227", 5, "Bilbo Baggins leaves his comfortable home for a remarkable adventure with a company of dwarves and a wizard.", false],
-  ["Atomic Habits", "James Clear", "2018", "Personal growth", "9780735211292", 2, "A practical guide to building good habits, breaking bad ones, and making small changes that lead to remarkable results.", false],
-  ["Educated", "Tara Westover", "2018", "Memoir", "9780399590504", 1, "Tara Westover's memoir traces her journey from an isolated childhood in rural Idaho to a life shaped by education.", false],
-  ["The Book Thief", "Markus Zusak", "2005", "Historical fiction", "9780375842207", 2, "In Nazi Germany, young Liesel finds solace in stealing books and sharing their stories amid a world at war.", false],
-  ["The Silent Patient", "Alex Michaelides", "2019", "Mystery", "9781250301697", 3, "Alicia Berenson's life is seemingly perfect until one evening she shoots her husband and never speaks again.", false],
+  ["Calculus: Early Transcendentals", "James Stewart", "2015", "Mathematics", "9781285741550", 4, "A comprehensive calculus text covering limits, derivatives, integrals, and infinite series with applied examples.", true],
+  ["Linear Algebra and Its Applications", "David C. Lay, Steven R. Lay, and Judi J. McDonald", "2015", "Mathematics", "9780321982384", 3, "An introduction to linear algebra, including matrices, vector spaces, eigenvalues, and practical applications.", true],
+  ["Discrete Mathematics and Its Applications", "Kenneth H. Rosen", "2018", "Computer Science", "9781259676512", 3, "Core discrete mathematics concepts for computing, including logic, proofs, algorithms, graphs, and counting.", false],
+  ["Introduction to Algorithms", "Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein", "2022", "Computer Science", "9780262046305", 3, "A detailed reference to algorithm design and analysis, data structures, sorting, graph algorithms, and optimization.", true],
+  ["Python Crash Course", "Eric Matthes", "2023", "Computer Science", "9781718502703", 4, "A hands-on introduction to Python programming, from fundamentals to projects in data visualization and web development.", true],
+  ["Clean Code", "Robert C. Martin", "2008", "Software Engineering", "9780132350884", 2, "Principles and examples for writing readable, maintainable software and improving code through refactoring.", false],
+  ["Computer Networking: A Top-Down Approach", "James F. Kurose and Keith W. Ross", "2021", "Computer Science", "9780136681557", 2, "An application-focused introduction to network protocols, the Internet, transport, routing, and network security.", false],
+  ["Database System Concepts", "Abraham Silberschatz, Henry F. Korth, and S. Sudarshan", "2019", "Computer Science", "9781260084504", 2, "Foundations of relational databases, SQL, database design, transactions, storage, and distributed data.", false],
+  ["Operating System Concepts", "Abraham Silberschatz, Peter B. Galvin, and Greg Gagne", "2018", "Computer Science", "9781119800361", 2, "A study of operating-system structures, processes, memory, storage, security, and distributed systems.", false],
+  ["Campbell Biology", "Lisa A. Urry, Michael L. Cain, Steven A. Wasserman, Peter V. Minorsky, and Rebecca B. Orr", "2020", "Biology", "9780135188743", 4, "A broad introduction to biology, covering evolution, cells, genetics, ecology, and the diversity of life.", true],
+  ["Molecular Biology of the Cell", "Bruce Alberts, Rebecca Heald, Alexander Johnson, David Morgan, Martin Raff, Keith Roberts, and Peter Walter", "2022", "Biology", "9780393884821", 2, "A detailed textbook on cell structure, molecular processes, genetics, signaling, and experimental methods.", false],
+  ["Anatomy and Physiology", "J. Gordon Betts, Kelly A. Young, James A. Wise, et al.", "2017", "Health Sciences", "9781938168130", 3, "An introduction to human body systems, anatomy, physiology, and the relationships between structure and function.", false],
+  ["Chemistry: The Central Science", "Theodore E. Brown, H. Eugene LeMay, Bruce E. Bursten, et al.", "2017", "Chemistry", "9780134414232", 3, "A general chemistry text covering atoms, bonding, reactions, thermodynamics, and chemical equilibrium.", true],
+  ["Organic Chemistry", "Jonathan Clayden, Nick Greeves, and Stuart Warren", "2012", "Chemistry", "9780199270293", 2, "A concept-driven introduction to organic structures, mechanisms, synthesis, and chemical reactivity.", false],
+  ["University Physics with Modern Physics", "Hugh D. Young and Roger A. Freedman", "2019", "Physics", "9780135159552", 3, "A calculus-based physics course covering mechanics, waves, thermodynamics, electromagnetism, and modern physics.", true],
+  ["Fundamentals of Physics", "David Halliday, Robert Resnick, and Jearl Walker", "2018", "Physics", "9781119320647", 2, "A foundational treatment of physics concepts and problem-solving across mechanics, waves, electricity, and optics.", false],
+  ["Principles of Economics", "N. Gregory Mankiw", "2020", "Economics", "9780357722718", 3, "An accessible introduction to microeconomics, macroeconomics, markets, public policy, and economic growth.", true],
+  ["Financial Accounting", "Robert Libby, Patricia A. Libby, and Daniel G. Short", "2022", "Accounting", "9781260247787", 2, "An introduction to financial statements, accounting concepts, and how financial information supports decisions.", false],
+  ["Marketing Management", "Philip Kotler, Kevin Lane Keller, and Alexander Chernev", "2021", "Business", "9780135887158", 2, "A guide to marketing strategy, customer value, market research, branding, and developing effective campaigns.", false],
+  ["Organizational Behavior", "Stephen P. Robbins and Timothy A. Judge", "2019", "Business", "9780134729329", 2, "Research-based coverage of individual behavior, teams, leadership, organizational culture, and workplace dynamics.", false],
+  ["Psychology", "Rose M. Spielman, William J. Jenkins, and Marilyn D. Lovett", "2020", "Psychology", "9781951693237", 3, "An introduction to psychological science, including behavior, cognition, development, mental health, and research.", true],
+  ["Introduction to Sociology", "Tanya Maria Golash-Boza", "2021", "Sociology", "9781951693510", 2, "An overview of sociological perspectives, culture, socialization, inequality, institutions, and social change.", false],
+  ["Research Methods in Psychology", "Beth Morling", "2020", "Psychology", "9780393536263", 2, "A practical guide to designing studies, evaluating evidence, understanding statistics, and interpreting research.", false],
+  ["Environmental Science", "G. Tyler Miller and Scott E. Spoolman", "2018", "Environmental Science", "9781337569613", 2, "An introduction to ecosystems, natural resources, pollution, climate, and sustainable solutions.", false],
+  ["Engineering Mechanics: Statics", "R. C. Hibbeler", "2015", "Engineering", "9780133918922", 2, "Core statics concepts for engineering, including force systems, equilibrium, structures, and friction.", false],
+  ["Principles of Geology", "Charles C. Plummer, Diane H. Carlson, and Lisa Hammersley", "2015", "Geology", "9780078096105", 2, "An introduction to Earth's materials, plate tectonics, geologic time, surface processes, and natural hazards.", false],
 ].map(([title, author, year, genre, isbn, copies, description, featured]) => ({
   title, author, year, genre, isbn, copies, description, featured,
 }));
+
+const legacyStarterBooks = new Map([
+  ["9780451524935", "1984"],
+  ["9780141439518", "Pride and Prejudice"],
+  ["9780743273565", "The Great Gatsby"],
+  ["9780061120084", "To Kill a Mockingbird"],
+  ["9780441172719", "Dune"],
+  ["9780547928227", "The Hobbit"],
+  ["9780735211292", "Atomic Habits"],
+  ["9780399590504", "Educated"],
+  ["9780375842207", "The Book Thief"],
+  ["9781250301697", "The Silent Patient"],
+]);
 
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
@@ -68,7 +98,8 @@ function toLoan(loan) {
     id: loan.id,
     bookId: loan.book.id,
     borrower: loan.borrower.username,
-    due: loan.due.toISOString().slice(0, 10),
+    borrowedAt: loan.createdAt.toISOString(),
+    due: loan.due.toISOString(),
     status: loan.status,
   };
 }
@@ -260,6 +291,9 @@ async function start() {
   if (process.env.JWT_SECRET.length < 32) throw new Error("JWT_SECRET must be at least 32 characters.");
   if (process.env.BOOTSTRAP_LIBRARIAN_PASSWORD.length < 8) throw new Error("Bootstrap librarian password must be at least 8 characters.");
 
+  const dnsServers = process.env.MONGODB_DNS_SERVERS?.split(",").map((server) => server.trim()).filter(Boolean);
+  if (dnsServers?.length) setServers(dnsServers);
+
   await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
 
   const username = process.env.BOOTSTRAP_LIBRARIAN_USERNAME.trim().toLowerCase();
@@ -272,7 +306,22 @@ async function start() {
     });
   }
 
-  if (await Book.countDocuments() === 0) await Book.insertMany(starterBooks);
+  const oldStarterRecords = await Book.find({ isbn: { $in: [...legacyStarterBooks.keys()] } }).select("_id isbn title");
+  const untouchedOldStarters = oldStarterRecords.filter((book) => legacyStarterBooks.get(book.isbn) === book.title);
+  if (untouchedOldStarters.length) {
+    const oldIds = untouchedOldStarters.map((book) => book._id);
+    const booksWithLoanHistory = await Loan.distinct("book", { book: { $in: oldIds } });
+    const idsToRemove = oldIds.filter((id) => !booksWithLoanHistory.some((loanBookId) => loanBookId.equals(id)));
+    if (idsToRemove.length) await Book.deleteMany({ _id: { $in: idsToRemove } });
+  }
+
+  await Book.bulkWrite(starterBooks.map((book) => ({
+    updateOne: {
+      filter: { isbn: book.isbn },
+      update: { $setOnInsert: book },
+      upsert: true,
+    },
+  })));
   app.listen(port, () => console.log(`Shelf API listening on port ${port}`));
 }
 

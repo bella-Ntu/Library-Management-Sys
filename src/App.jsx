@@ -19,6 +19,8 @@ function Icon({ name, size = 18, strokeWidth = 1.7 }) {
     check: <path d="m5 12 4 4L19 6" />,
     spark: <><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2zM19 14l1.2 2.3L22 17l-1.8.7L19 20l-.8-2.3L16 17l2.2-.7z" /></>,
     menu: <><path d="M4 6h16M4 12h16M4 18h16" /></>,
+    moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.6 8.6 0 1 0 11 11z" />,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></>,
   };
   return (
     <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -54,6 +56,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("All books");
   const [selectedBook, setSelectedBook] = useState(null);
+  const [selectedLoan, setSelectedLoan] = useState(null);
   const [editingBook, setEditingBook] = useState(null);
   const [showBookForm, setShowBookForm] = useState(false);
   const [showRecommendationForm, setShowRecommendationForm] = useState(false);
@@ -67,8 +70,8 @@ function App() {
   const [librarianCount, setLibrarianCount] = useState(0);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [apiReady, setApiReady] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [darkTheme, setDarkTheme] = useState(() => window.localStorage.getItem("shelf-theme") === "dark");
 
   useEffect(() => {
     let active = true;
@@ -94,7 +97,6 @@ function App() {
           }
         }
         if (active) {
-          setApiReady(true);
           setApiError("");
         }
       } catch (error) {
@@ -131,6 +133,9 @@ function App() {
     const timer = window.setTimeout(() => setToast(""), 3000);
     return () => window.clearTimeout(timer);
   }, [toast]);
+  useEffect(() => {
+    window.localStorage.setItem("shelf-theme", darkTheme ? "dark" : "light");
+  }, [darkTheme]);
 
   const role = session?.role || "Student";
   const isAdmin = role === "Librarian";
@@ -203,7 +208,7 @@ function App() {
   }
 
   function openPage(nextPage) {
-    if ((nextPage === "My loans" || nextPage === "Recommendations") && !session) {
+    if (["My loans", "Recommendations", "Profile"].includes(nextPage) && !session) {
       notify("Please sign in to access your library account.");
       setShowLoginForm(true);
       return;
@@ -380,6 +385,7 @@ function App() {
       { label: "All loans", icon: "bookmark" },
       { label: "Inbox", icon: "inbox", count: unreadMessages },
       { label: "Librarians", icon: "user" },
+      { label: "Profile", icon: "user" },
     ]
     : session
       ? [
@@ -387,6 +393,7 @@ function App() {
       { label: "Browse books", icon: "book" },
       { label: "My loans", icon: "bookmark", count: myLoans.length },
       { label: "Recommendations", icon: "inbox" },
+      { label: "Profile", icon: "user" },
       ]
       : [
         { label: "Overview", icon: "grid" },
@@ -513,7 +520,18 @@ function App() {
         {rows.length ? <div className="loan-list">{rows.map((loan) => {
           const book = books.find((item) => item.id === loan.bookId);
           if (!book) return null;
-          return <div className="loan-row" key={loan.id}><BookCover book={book} /><div className="loan-row-copy"><span className="book-genre">{isAdmin ? "BORROWED BY A READER" : "CURRENTLY READING"}</span><h3>{book.title}</h3><p>{book.author} · {book.year}</p></div><div className="loan-due"><span>DUE BACK</span><strong>{formatDate(loan.due)}</strong></div>{isAdmin ? <span className="request-status borrowed">On loan</span> : <button className="button button-outline" onClick={() => returnBook(loan)}>Return book</button>}</div>;
+          return <div className="loan-row" key={loan.id}>
+            {isAdmin ? (
+              <button className="loan-book-trigger" onClick={() => setSelectedLoan(loan)} aria-label={`View loan details for ${book.title}`}>
+                <BookCover book={book} />
+                <div className="loan-row-copy"><span className="book-genre">BORROWED BY A READER</span><h3>{book.title}</h3><p>{book.author} · {book.year}</p></div>
+              </button>
+            ) : (
+              <><BookCover book={book} /><div className="loan-row-copy"><span className="book-genre">CURRENTLY READING</span><h3>{book.title}</h3><p>{book.author} · {book.year}</p></div></>
+            )}
+            <div className="loan-due"><span>DUE BACK</span><strong>{formatDate(loan.due)}</strong></div>
+            {isAdmin ? <span className="request-status borrowed">On loan</span> : <button className="button button-outline" onClick={() => returnBook(loan)}>Return book</button>}
+          </div>;
         })}</div> : <div className="empty-state"><span className="empty-icon"><Icon name="book" size={22} /></span><h3>Your next chapter is waiting</h3><p>Browse the collection and borrow a book to see it here.</p><button className="button button-dark" onClick={() => openPage("Browse books")}>Browse books <Icon name="arrow" size={15} /></button></div>}
       </section>
     );
@@ -554,31 +572,53 @@ function App() {
     );
   }
 
+  function renderProfile() {
+    return (
+      <section className="page-section">
+        <div className="collection-intro">
+          <div>
+            <div className="eyebrow">YOUR ACCOUNT</div>
+            <h2>Make yourself <em>at home.</em></h2>
+            <p>Manage your sign-in details.</p>
+          </div>
+        </div>
+        <div className="profile-settings-grid">
+          <section className="profile-settings-card">
+            <div className="profile-settings-heading">
+              <span className="empty-icon"><Icon name="user" size={22} /></span>
+              <div><h3>Account details</h3><p>Your library sign-in</p></div>
+            </div>
+            <dl className="profile-details">
+              <div><dt>Username</dt><dd>{session.username}</dd></div>
+              <div><dt>Account type</dt><dd>{session.role}</dd></div>
+            </dl>
+            <form className="book-form profile-password-form" onSubmit={handlePasswordChange}>
+              <h4>Change password</h4>
+              <label>Current password<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
+              <label>New password<input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 8 characters" minLength="8" required /></label>
+              <button className="button button-dark" type="submit">Update password</button>
+            </form>
+          </section>
+        </div>
+      </section>
+    );
+  }
+
   function renderLogin() {
     const isRegister = authMode === "register";
-    const isPassword = authMode === "password";
     const isHelp = authMode === "help";
     return (
       <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowLoginForm(false); }}>
         <section className="form-modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
           <div className="form-modal-header">
             <div>
-              <div className="eyebrow">{isRegister ? "NEW STUDENT ACCOUNT" : isPassword ? "ACCOUNT SECURITY" : isHelp ? "PASSWORD RECOVERY" : "YOUR LIBRARY ACCOUNT"}</div>
-              <h2 id="auth-title">{isRegister ? <>Join the <em>library.</em></> : isPassword ? <>Change your <em>password.</em></> : isHelp ? <>Need a hand?</> : <>Welcome <em>back.</em></>}</h2>
-              <p>{isRegister ? "Create a student account to borrow and keep track of books." : isPassword ? "Choose a new password for your account." : isHelp ? "For a forgotten password, contact your librarian to reset your account." : "Sign in to borrow books and access your account."}</p>
+              <div className="eyebrow">{isRegister ? "NEW STUDENT ACCOUNT" : isHelp ? "PASSWORD RECOVERY" : "YOUR LIBRARY ACCOUNT"}</div>
+              <h2 id="auth-title">{isRegister ? <>Join the <em>library.</em></> : isHelp ? <>Need a hand?</> : <>Welcome <em>back.</em></>}</h2>
+              <p>{isRegister ? "Create a student account to borrow and keep track of books." : isHelp ? "For a forgotten password, contact your librarian to reset your account." : "Sign in to borrow books and access your account."}</p>
             </div>
             <button className="icon-button" onClick={() => setShowLoginForm(false)} aria-label="Close"><Icon name="close" /></button>
           </div>
-          {isPassword ? (
-            <form className="book-form" onSubmit={handlePasswordChange}>
-              <label>Current password<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
-              <label>New password<input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 8 characters" minLength="8" required /></label>
-              <div className="form-actions">
-                <button type="button" className="button button-outline" onClick={() => setShowLoginForm(false)}>Cancel</button>
-                <button className="button button-dark" type="submit">Update password</button>
-              </div>
-            </form>
-          ) : isRegister ? (
+          {isRegister ? (
             <form className="book-form" onSubmit={handleRegistration}>
               <label>Username<input autoComplete="username" value={registerForm.username} onChange={(event) => setRegisterForm((current) => ({ ...current, username: event.target.value }))} minLength="3" maxLength="32" required /></label>
               <label>Password<input type="password" autoComplete="new-password" value={registerForm.password} onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))} minLength="8" required /></label>
@@ -613,6 +653,7 @@ function App() {
     if (page === "My loans" || page === "All loans") return renderLoans();
     if (page === "Inbox" || page === "Recommendations") return renderRecommendations();
     if (page === "Librarians" && isAdmin) return renderLibrarians();
+    if (page === "Profile" && session) return renderProfile();
     return renderOverview();
   }
 
@@ -632,7 +673,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme={darkTheme ? "dark" : "light"}>
       <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
         <button className="brand" onClick={() => openPage("Overview")} aria-label="Shelf home"><span className="brand-mark"><span /><span /><span /></span><span className="brand-word">shelf<span>.</span></span></button>
         <div className="sidebar-label">YOUR LIBRARY</div>
@@ -656,17 +697,19 @@ function App() {
           <button className="mobile-menu icon-button" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation"><Icon name="menu" size={21} /></button>
           <div className="breadcrumb"><span>THE LIBRARY</span><Icon name="chevron" size={14} /><strong>{page}</strong></div>
           <div className="topbar-right">
+            <button className="icon-button theme-toggle" type="button" aria-label={`Switch to ${darkTheme ? "light" : "dark"} theme`} aria-pressed={darkTheme} title={`Switch to ${darkTheme ? "light" : "dark"} theme`} onClick={() => setDarkTheme((current) => !current)}>
+              <Icon name={darkTheme ? "moon" : "sun"} size={19} />
+            </button>
             <span className="account-status">{session ? (isAdmin ? "Librarian" : "Student") : "Guest"}</span>
             {session
               ? <>
-                <button className="logout-button" onClick={() => { setAuthMode("password"); setShowLoginForm(true); }}>Change password</button>
                 <button className="logout-button" onClick={logout}>Log out</button>
               </>
               : <button className="button button-dark sign-in-button" onClick={() => setShowLoginForm(true)}>Sign in</button>}
           </div>
           </header>
         <div className="page-content">
-          {!apiReady && <div className="api-notice" role={apiError ? "alert" : "status"}><strong>{apiError ? "Library server unavailable" : "Connecting to the library…"}</strong><span>{apiError || "Loading the catalog from the database."}</span>{apiError && <button className="text-link" onClick={() => window.location.reload()}>Retry</button>}</div>}
+          {apiError && <div className="api-notice" role="alert"><strong>Library server unavailable</strong><span>{apiError}</span><button className="text-link" onClick={() => window.location.reload()}>Retry</button></div>}
           <div className="page-heading"><div><div className="eyebrow">{new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date()).toUpperCase()}</div><h1>{pageTitle}</h1></div>{page === "Overview" && <span className="heading-note">A good day to turn a page <span>✳</span></span>}</div>
           {renderPage()}
           <footer className="page-footer"><span>MADE FOR PEOPLE WHO LOVE A GOOD STORY</span><span>SHELF <i>·</i> THE LITTLE LIBRARY</span></footer>
@@ -697,6 +740,23 @@ function App() {
           </div>
         </section>
       </div>}
+      {selectedLoan && isAdmin && (() => {
+        const book = books.find((item) => item.id === selectedLoan.bookId);
+        if (!book) return null;
+        return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedLoan(null); }}>
+          <section className="form-modal loan-details-modal" role="dialog" aria-modal="true" aria-labelledby="loan-details-title">
+            <div className="form-modal-header">
+              <div><div className="eyebrow">ACTIVE BORROWING</div><h2 id="loan-details-title">{book.title}</h2><p>by {book.author}</p></div>
+              <button className="icon-button" onClick={() => setSelectedLoan(null)} aria-label="Close loan details"><Icon name="close" /></button>
+            </div>
+            <dl className="loan-details-list">
+              <div><dt>Borrowed by</dt><dd>{selectedLoan.borrower}</dd></div>
+              <div><dt>Checked out</dt><dd>{formatDateTime(selectedLoan.borrowedAt)}</dd></div>
+              <div><dt>Borrowing period ends</dt><dd>{formatDateTime(selectedLoan.due)}</dd></div>
+            </dl>
+          </section>
+        </div>;
+      })()}
       {showBookForm && isAdmin && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setShowBookForm(false); setEditingBook(null); } }}><section className="form-modal" role="dialog" aria-modal="true" aria-labelledby="book-form-title"><div className="form-modal-header"><div><div className="eyebrow">{editingBook ? "A FEW LITTLE CHANGES" : "A NEW ADDITION"}</div><h2 id="book-form-title">{editingBook ? "Edit this <em>book.</em>" : "Add a new <em>story.</em>"}</h2></div><button className="icon-button" onClick={() => { setShowBookForm(false); setEditingBook(null); }} aria-label="Close"><Icon name="close" /></button></div><form className="book-form" onSubmit={saveBook}><label>Book title<input name="title" defaultValue={editingBook?.title || ""} required placeholder="e.g. The Midnight Library" /></label><div className="form-two-col"><label>Author<input name="author" defaultValue={editingBook?.author || ""} required placeholder="Author name" /></label><label>Publication year<input name="year" type="number" min="1000" max="2100" defaultValue={editingBook?.year || ""} required placeholder="2024" /></label></div><div className="form-two-col"><label>Genre<input name="genre" defaultValue={editingBook?.genre || ""} required placeholder="e.g. Fiction" /></label><label>Available copies<input name="copies" type="number" min="0" defaultValue={editingBook?.copies ?? 1} required /></label></div><label>ISBN <span className="optional-label">optional · used to find the cover</span><input name="isbn" defaultValue={editingBook?.isbn || ""} placeholder="978..." /></label><label>Cover image URL <span className="optional-label">optional</span><input name="cover" type="url" defaultValue={editingBook?.cover || ""} placeholder="https://…" /></label><label>Full book URL <span className="optional-label">optional · for read access</span><input name="fullTextUrl" type="url" defaultValue={editingBook?.fullTextUrl || ""} placeholder="https://…" /></label><label>Download URL <span className="optional-label">optional</span><input name="downloadUrl" type="url" defaultValue={editingBook?.downloadUrl || ""} placeholder="https://…" /></label><label>A little about the book <span className="optional-label">optional</span><textarea name="description" rows="3" defaultValue={editingBook?.description || ""} placeholder="What might a reader want to know?" /></label><div className="form-actions"><button type="button" className="button button-outline" onClick={() => { setShowBookForm(false); setEditingBook(null); }}>Cancel</button><button className="button button-dark" type="submit">{editingBook ? "Save changes" : "Add to collection"} <Icon name="arrow" size={16} /></button></div></form></section></div>}
       {showRecommendationForm && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowRecommendationForm(false); }}><section className="form-modal recommendation-modal" role="dialog" aria-modal="true" aria-labelledby="recommend-form-title"><div className="form-modal-header"><div><div className="eyebrow">A LITTLE NOTE FOR THE LIBRARIAN</div><h2 id="recommend-form-title">Put it on our <em>radar.</em></h2><p>Tell us about the book you would love to see on the shelf.</p></div><button className="icon-button" onClick={() => setShowRecommendationForm(false)} aria-label="Close"><Icon name="close" /></button></div><form className="book-form" onSubmit={submitRecommendation}><label>Book title<input name="title" required placeholder="Which book should we look for?" /></label><label>Author<input name="author" required placeholder="Who wrote it?" /></label><label>Why this book? <span className="optional-label">optional</span><textarea name="note" rows="3" placeholder="A little note to your librarian…" /></label><div className="form-actions"><button type="button" className="button button-outline" onClick={() => setShowRecommendationForm(false)}>Cancel</button><button className="button button-dark" type="submit">Send recommendation <Icon name="arrow" size={16} /></button></div></form></section></div>}
       {showLoginForm && renderLogin()}
@@ -706,7 +766,19 @@ function App() {
 }
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00`) : new Date(value);
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function formatDateTime(value) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(value));
 }
 
 export default App;
