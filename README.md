@@ -14,6 +14,7 @@ Library management app built with React, Vite, Express, and MongoDB. Students ca
    ```
 
 The API connects to MongoDB and makes sure the educational catalog is present, with books across mathematics, computer science, science, business, and other courses. It keeps existing librarian-added books and books with loan history. Check the connection at `http://localhost:3000/api/health`.
+If it's not connect, check the task manager n' Services and search up mongodb in search bar. In status, run it if it has stopped running.
 
 ## Security
 
