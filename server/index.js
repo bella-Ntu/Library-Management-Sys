@@ -5,7 +5,7 @@ import express from "express";
 import { setServers } from "node:dns/promises";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
-import { Book, Loan, Recommendation, User } from "./models.js";
+import { Book, Loan, Message, Recommendation, User } from "./models.js";
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -113,6 +113,18 @@ function toRecommendation(item) {
     requester: item.requester.id,
     date: item.createdAt.toISOString().slice(0, 10),
     status: item.status,
+  };
+}
+
+function toMessage(message) {
+  return {
+    id: message.id,
+    sender: message.sender ? { id: message.sender.id, username: message.sender.username } : null,
+    recipient: message.recipient ? { id: message.recipient.id, username: message.recipient.username } : null,
+    subject: message.subject,
+    body: message.body,
+    broadcast: message.broadcast,
+    date: message.createdAt.toISOString(),
   };
 }
 
@@ -259,6 +271,47 @@ app.patch("/api/recommendations/:id", authenticate, requireLibrarian, async (req
     .populate("requester", "username");
   if (!recommendation) return sendError(res, 404, "Recommendation not found.");
   return res.json({ recommendation: toRecommendation(recommendation) });
+});
+
+app.get("/api/students", authenticate, requireLibrarian, async (_req, res) => {
+  const students = await User.find({ role: "Student" }).select("username role").sort({ username: 1 });
+  return res.json({ students: students.map(publicUser) });
+});
+
+app.get("/api/messages", authenticate, async (req, res) => {
+  const filter = req.sessionUser.role === "Librarian"
+    ? { $or: [{ sender: req.sessionUser.sub }, { broadcast: true }] }
+    : { $or: [{ recipient: req.sessionUser.sub }, { broadcast: true }] };
+  const messages = await Message.find(filter)
+    .populate("sender", "username")
+    .populate("recipient", "username")
+    .sort({ createdAt: -1 });
+  return res.json({ messages: messages.map(toMessage) });
+});
+
+app.post("/api/messages", authenticate, requireLibrarian, async (req, res) => {
+  const subject = String(req.body.subject || "").trim();
+  const body = String(req.body.body || "").trim();
+  const broadcast = req.body.broadcast === true;
+  const recipientId = String(req.body.recipientId || "").trim();
+  if (!subject || subject.length > 120) return sendError(res, 400, "Enter a subject of 1–120 characters.");
+  if (!body || body.length > 3000) return sendError(res, 400, "Enter a message of 1–3000 characters.");
+  if (!broadcast && !recipientId) return sendError(res, 400, "Choose a student to receive this message.");
+
+  let recipient = null;
+  if (!broadcast) {
+    recipient = await User.findOne({ _id: recipientId, role: "Student" });
+    if (!recipient) return sendError(res, 404, "Student account not found.");
+  }
+  const message = await Message.create({
+    sender: req.sessionUser.sub,
+    recipient: recipient?.id || null,
+    subject,
+    body,
+    broadcast,
+  });
+  await message.populate(["sender", "recipient"]);
+  return res.status(201).json({ message: toMessage(message) });
 });
 
 app.get("/api/librarians/count", authenticate, requireLibrarian, async (_req, res) => {

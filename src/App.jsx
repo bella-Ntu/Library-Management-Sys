@@ -51,6 +51,10 @@ function App() {
   const [books, setBooks] = useState([]);
   const [loans, setLoans] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [directMessageDraft, setDirectMessageDraft] = useState({ recipientId: "", subject: "", body: "" });
+  const [broadcastDraft, setBroadcastDraft] = useState({ subject: "", body: "" });
   const [session, setSession] = useState(null);
   const [page, setPage] = useState("Overview");
   const [query, setQuery] = useState("");
@@ -84,16 +88,21 @@ function App() {
         const user = sessionData?.user || null;
         setSession(user);
         if (user) {
-          const [loanData, recommendationData] = await Promise.all([
+          const [loanData, recommendationData, messageData] = await Promise.all([
             api.loans(),
             api.recommendations(),
+            api.messages(),
           ]);
           if (!active) return;
           setLoans(loanData.loans);
           setRecommendations(recommendationData.recommendations);
+          setMessages(messageData.messages);
           if (user.role === "Librarian") {
-            const count = await api.librarianCount();
-            if (active) setLibrarianCount(count.count);
+            const [count, studentData] = await Promise.all([api.librarianCount(), api.students()]);
+            if (active) {
+              setLibrarianCount(count.count);
+              setStudents(studentData.students);
+            }
           }
         }
         if (active) {
@@ -112,14 +121,22 @@ function App() {
     let active = true;
     async function refreshPrivateData() {
       try {
-        const [loanData, recommendationData] = await Promise.all([api.loans(), api.recommendations()]);
+        const [loanData, recommendationData, messageData] = await Promise.all([
+          api.loans(),
+          api.recommendations(),
+          api.messages(),
+        ]);
         if (active) {
           setLoans(loanData.loans);
           setRecommendations(recommendationData.recommendations);
+          setMessages(messageData.messages);
         }
         if (session.role === "Librarian") {
-          const count = await api.librarianCount();
-          if (active) setLibrarianCount(count.count);
+          const [count, studentData] = await Promise.all([api.librarianCount(), api.students()]);
+          if (active) {
+            setLibrarianCount(count.count);
+            setStudents(studentData.students);
+          }
         }
       } catch (error) {
         if (active) notify(error.message);
@@ -157,6 +174,8 @@ function App() {
 
   function logout() {
     setSession(null);
+    setMessages([]);
+    setStudents([]);
     setPage("Overview");
     setLoginForm({ username: "", password: "" });
     setShowLoginForm(false);
@@ -208,12 +227,12 @@ function App() {
   }
 
   function openPage(nextPage) {
-    if (["My loans", "Recommendations", "Profile"].includes(nextPage) && !session) {
+    if (["My loans", "Inbox", "Recommendations", "Profile"].includes(nextPage) && !session) {
       notify("Please sign in to access your library account.");
       setShowLoginForm(true);
       return;
     }
-    if (["Collection", "All loans", "Inbox", "Librarians"].includes(nextPage) && !isAdmin) {
+    if (["Collection", "All loans", "Librarians"].includes(nextPage) && !isAdmin) {
       notify("This page is available to librarians only.");
       return;
     }
@@ -356,6 +375,36 @@ function App() {
     }
   }
 
+  async function sendAdminMessage(event, broadcast = false) {
+    event.preventDefault();
+    if (!isAdmin) {
+      notify("Only librarians can message readers.");
+      return;
+    }
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const payload = {
+      subject: String(data.get("subject") || "").trim(),
+      body: String(data.get("body") || "").trim(),
+      broadcast,
+      ...(broadcast ? {} : { recipientId: String(data.get("recipientId") || "") }),
+    };
+    try {
+      const { message } = await api.sendMessage(payload);
+      setMessages((current) => [message, ...current]);
+      if (broadcast) {
+        setBroadcastDraft({ subject: "", body: "" });
+        notify("Important information sent to all users.");
+      } else {
+        setDirectMessageDraft({ recipientId: "", subject: "", body: "" });
+        notify("Message sent to the reader.");
+      }
+      form.reset();
+    } catch (error) {
+      notify(error.message);
+    }
+  }
+
   async function addLibrarian(event) {
     event.preventDefault();
     if (!isAdmin) {
@@ -392,6 +441,7 @@ function App() {
       { label: "Overview", icon: "grid" },
       { label: "Browse books", icon: "book" },
       { label: "My loans", icon: "bookmark", count: myLoans.length },
+      { label: "Inbox", icon: "inbox" },
       { label: "Recommendations", icon: "inbox" },
       { label: "Profile", icon: "user" },
       ]
@@ -543,12 +593,89 @@ function App() {
     );
   }
 
+  function renderAdminInbox() {
+    return (
+      <>
+        <section className="page-section">
+          <div className="collection-intro">
+            <div>
+              <div className="eyebrow">LIBRARY COMMUNICATIONS</div>
+              <h2>Keep readers <em>informed.</em></h2>
+              <p>Reply to an individual reader or send an announcement to everyone.</p>
+            </div>
+          </div>
+          <div className="message-compose-grid">
+            <section id="direct-message-composer" className="message-panel">
+              <div className="message-panel-heading">
+                <div className="eyebrow">DIRECT MESSAGE</div>
+                <h3>Reply to a reader</h3>
+                <p>Send a private message to one student.</p>
+              </div>
+              <form className="message-form" onSubmit={(event) => sendAdminMessage(event)}>
+                <label>Send to
+                  <select name="recipientId" required value={directMessageDraft.recipientId} onChange={(event) => setDirectMessageDraft((current) => ({ ...current, recipientId: event.target.value }))}>
+                    <option value="">Choose a reader</option>
+                    {students.map((student) => <option key={student.id} value={student.id}>{student.username}</option>)}
+                  </select>
+                </label>
+                <label>Subject
+                  <input name="subject" required maxLength={120} value={directMessageDraft.subject} onChange={(event) => setDirectMessageDraft((current) => ({ ...current, subject: event.target.value }))} placeholder="Message subject" />
+                </label>
+                <label>Message
+                  <textarea name="body" required maxLength={3000} rows="4" value={directMessageDraft.body} onChange={(event) => setDirectMessageDraft((current) => ({ ...current, body: event.target.value }))} placeholder="Write your message..." />
+                </label>
+                <button className="button button-dark" type="submit" disabled={!students.length}>Send message</button>
+                {!students.length && <span className="quiet-note">There are no student accounts to message yet.</span>}
+              </form>
+            </section>
+            <section className="message-panel">
+              <div className="message-panel-heading">
+                <div className="eyebrow">ANNOUNCEMENT</div>
+                <h3>Reach everyone</h3>
+                <p>Send important information to all library users at once.</p>
+              </div>
+              <form className="message-form" onSubmit={(event) => sendAdminMessage(event, true)}>
+                <label>Subject
+                  <input name="subject" required maxLength={120} value={broadcastDraft.subject} onChange={(event) => setBroadcastDraft((current) => ({ ...current, subject: event.target.value }))} placeholder="Announcement subject" />
+                </label>
+                <label>Message
+                  <textarea name="body" required maxLength={3000} rows="4" value={broadcastDraft.body} onChange={(event) => setBroadcastDraft((current) => ({ ...current, body: event.target.value }))} placeholder="Share an important update..." />
+                </label>
+                <button className="button button-dark" type="submit">Send to everyone</button>
+              </form>
+            </section>
+          </div>
+        </section>
+        <section className="section-block admin-requests">
+          <div className="section-heading"><div><div className="eyebrow">FROM YOUR READERS</div><h2>A few good <em>ideas.</em></h2></div></div>
+          {recommendations.length ? <div className="recommendation-preview">{recommendations.map((item) => <div className="recommendation-card inbox-card" key={item.id}><div className="recommendation-mark">“</div><div className="recommendation-body"><h3>{item.title}</h3><p>by {item.author}</p><blockquote>{item.note || "No note included."}</blockquote><small>Reader suggestion · {formatDate(item.date)}</small></div><div className="recommendation-actions"><span className={`request-status ${item.status.toLowerCase()}`}>{item.status}</span><button className="button button-outline small-button" onClick={() => { setDirectMessageDraft({ recipientId: item.requester, subject: `Re: ${item.title}`.slice(0, 120), body: "" }); document.getElementById("direct-message-composer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Reply to reader</button>{item.status !== "Approved" && <button className="button button-outline small-button" onClick={() => updateRecommendation(item.id, "Approved")}><Icon name="check" size={15} /> Approve</button>}{item.status !== "Archived" && <button className="icon-button" title="Archive suggestion" onClick={() => updateRecommendation(item.id, "Archived")}><Icon name="close" size={17} /></button>}</div></div>)}</div> : <div className="empty-state"><span className="empty-icon"><Icon name="inbox" size={22} /></span><h3>No recommendations yet</h3><p>When readers send ideas, you’ll find them here.</p></div>}
+        </section>
+        <section className="section-block">
+          <div className="section-heading"><div><div className="eyebrow">MESSAGE HISTORY</div><h2>Recent <em>messages.</em></h2></div></div>
+          {messages.length ? <div className="message-history">{messages.slice(0, 8).map((message) => <article className="message-history-card" key={message.id}><div className="message-history-heading"><div><h3>{message.subject}</h3><span>{message.broadcast ? "All users" : `To ${message.recipient?.username || "reader"}`} · {formatDate(message.date)}</span></div><span className={`request-status ${message.broadcast ? "approved" : "borrowed"}`}>{message.broadcast ? "Announcement" : "Direct message"}</span></div><p>{message.body}</p></article>)}</div> : <p className="quiet-note">Messages you send will appear here.</p>}
+        </section>
+      </>
+    );
+  }
+
+  function renderUserInbox() {
+    return (
+      <section className="page-section">
+        <div className="collection-intro">
+          <div>
+            <div className="eyebrow">FROM YOUR LIBRARY</div>
+            <h2>Your <em>messages.</em></h2>
+            <p>Replies and important updates from the library team.</p>
+          </div>
+        </div>
+        {messages.length ? <div className="message-history">{messages.map((message) => <article className="message-history-card" key={message.id}><div className="message-history-heading"><div><div className="eyebrow">{message.broadcast ? "LIBRARY ANNOUNCEMENT" : "MESSAGE FROM YOUR LIBRARIAN"}</div><h3>{message.subject}</h3><span>{formatDate(message.date)}</span></div></div><p>{message.body}</p></article>)}</div> : <div className="empty-state"><span className="empty-icon"><Icon name="inbox" size={22} /></span><h3>No messages yet</h3><p>Replies and library announcements will show up here.</p></div>}
+      </section>
+    );
+  }
+
   function renderRecommendations() {
-    if (!isAdmin) {
-      const mine = recommendations.filter((item) => item.requester === session?.id);
-      return <section className="page-section"><div className="collection-intro"><div><div className="eyebrow">A NOTE TO YOUR LIBRARIAN</div><h2>What's missing from the <em>shelf?</em></h2><p>Have a book in mind? Send a little note to the library team.</p></div><button className="button button-dark" onClick={() => setShowRecommendationForm(true)}><Icon name="plus" size={17} /> Recommend a book</button></div>{mine.length ? <div className="recommendation-preview">{mine.map((item) => <div className="recommendation-card" key={item.id}><div className="recommendation-mark">“</div><div><h3>{item.title}</h3><p>by {item.author}</p><small>{item.note || "No note added"} · Sent {formatDate(item.date)}</small></div><span className={`request-status ${item.status.toLowerCase()}`}>{item.status}</span></div>)}</div> : <div className="empty-state"><span className="empty-icon"><Icon name="inbox" size={22} /></span><h3>Your suggestions will live here</h3><p>Help us make the collection a little more yours.</p><button className="button button-dark" onClick={() => setShowRecommendationForm(true)}>Recommend a book <Icon name="arrow" size={15} /></button></div>}</section>;
-    }
-    return <section className="page-section"><div className="collection-intro"><div><div className="eyebrow">READER SUGGESTIONS</div><h2>Your next great <em>addition?</em></h2><p>Good ideas come from good readers. Here’s what they have in mind.</p></div></div>{recommendations.length ? <div className="recommendation-preview">{recommendations.map((item) => <div className="recommendation-card inbox-card" key={item.id}><div className="recommendation-mark">“</div><div className="recommendation-body"><h3>{item.title}</h3><p>by {item.author}</p><blockquote>{item.note || "No note included."}</blockquote><small>Reader suggestion · {formatDate(item.date)}</small></div><div className="recommendation-actions"><span className={`request-status ${item.status.toLowerCase()}`}>{item.status}</span>{item.status !== "Approved" && <button className="button button-outline small-button" onClick={() => updateRecommendation(item.id, "Approved")}><Icon name="check" size={15} /> Approve</button>}{item.status !== "Archived" && <button className="icon-button" title="Archive suggestion" onClick={() => updateRecommendation(item.id, "Archived")}><Icon name="close" size={17} /></button>}</div></div>)}</div> : <div className="empty-state"><span className="empty-icon"><Icon name="inbox" size={22} /></span><h3>No recommendations yet</h3><p>When readers send ideas, you’ll find them here.</p></div>}</section>;
+    const mine = recommendations.filter((item) => item.requester === session?.id);
+    return <section className="page-section"><div className="collection-intro"><div><div className="eyebrow">A NOTE TO YOUR LIBRARIAN</div><h2>What's missing from the <em>shelf?</em></h2><p>Have a book in mind? Send a little note to the library team.</p></div><button className="button button-dark" onClick={() => setShowRecommendationForm(true)}><Icon name="plus" size={17} /> Recommend a book</button></div>{mine.length ? <div className="recommendation-preview">{mine.map((item) => <div className="recommendation-card" key={item.id}><div className="recommendation-mark">“</div><div><h3>{item.title}</h3><p>by {item.author}</p><small>{item.note || "No note added"} · Sent {formatDate(item.date)}</small></div><span className={`request-status ${item.status.toLowerCase()}`}>{item.status}</span></div>)}</div> : <div className="empty-state"><span className="empty-icon"><Icon name="inbox" size={22} /></span><h3>Your suggestions will live here</h3><p>Help us make the collection a little more yours.</p><button className="button button-dark" onClick={() => setShowRecommendationForm(true)}>Recommend a book <Icon name="arrow" size={15} /></button></div>}</section>;
   }
 
   function renderLibrarians() {
@@ -657,7 +784,8 @@ function App() {
   function renderPage() {
     if (page === "Collection" || page === "Browse books") return renderCatalog();
     if (page === "My loans" || page === "All loans") return renderLoans();
-    if (page === "Inbox" || page === "Recommendations") return renderRecommendations();
+    if (page === "Inbox") return isAdmin ? renderAdminInbox() : renderUserInbox();
+    if (page === "Recommendations") return renderRecommendations();
     if (page === "Librarians" && isAdmin) return renderLibrarians();
     if (page === "Profile" && session) return renderProfile();
     return renderOverview();

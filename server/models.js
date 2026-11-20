@@ -35,7 +35,16 @@ const recommendationSchema = new mongoose.Schema({
   status: { type: String, enum: ["New", "Read", "Approved", "Archived"], default: "New" },
 }, { timestamps: true });
 
+const messageSchema = new mongoose.Schema({
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  subject: { type: String, required: true, trim: true, maxlength: 120 },
+  body: { type: String, required: true, trim: true, maxlength: 3000 },
+  broadcast: { type: Boolean, default: false },
+}, { timestamps: true });
+
 export const User = mongoose.model("User", userSchema);
 export const Book = mongoose.model("Book", bookSchema);
 export const Loan = mongoose.model("Loan", loanSchema);
 export const Recommendation = mongoose.model("Recommendation", recommendationSchema);
+export const Message = mongoose.model("Message", messageSchema);

@@ -656,3 +656,37 @@ body { font-size: 16px; }
 .app-shell[data-theme="dark"] .request-status.new { color: #f0d09f; }
 .app-shell[data-theme="dark"] .request-status.approved { color: #c8d8b2; }
 .app-shell[data-theme="dark"] .request-status.archived { color: #c1b9b0; }
+
+.message-compose-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.message-panel { min-width: 0; padding: 20px; border: 1px solid #eee9e2; border-radius: 6px; background: #fffefa; }
+.message-panel-heading { margin-bottom: 16px; }
+.message-panel-heading h3 { margin: 6px 0 4px; font: 21px var(--serif); font-weight: 400; }
+.message-panel-heading p { margin: 0; color: #62594f; font-size: 13px; line-height: 1.5; }
+.message-form { display: grid; gap: 11px; }
+.message-form label { display: grid; gap: 6px; color: #51473d; font-size: 13px; font-weight: 600; }
+.message-form input,
+.message-form select,
+.message-form textarea { width: 100%; padding: 10px 11px; border: 1px solid #e5ded4; border-radius: 4px; background: #fffefa; color: var(--ink); font-size: 14px; font-weight: 400; }
+.message-form textarea { resize: vertical; line-height: 1.5; }
+.message-form .button { justify-self: start; }
+.message-history { display: grid; gap: 10px; }
+.message-history-card { padding: 16px; border: 1px solid #eee9e2; border-radius: 5px; background: #fffefa; }
+.message-history-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.message-history-heading h3 { margin: 5px 0 3px; font: 18px var(--serif); font-weight: 400; }
+.message-history-heading span { color: #62594f; font-size: 12px; }
+.message-history-card > p { margin: 12px 0 0; color: #51473d; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+
+.app-shell[data-theme="dark"] .message-panel,
+.app-shell[data-theme="dark"] .message-history-card { border-color: #3b3731; background: #25231f; }
+.app-shell[data-theme="dark"] .message-panel-heading p,
+.app-shell[data-theme="dark"] .message-history-heading span { color: #c9c1b6; }
+.app-shell[data-theme="dark"] .message-form label,
+.app-shell[data-theme="dark"] .message-history-card > p { color: #e4d8c8; }
+.app-shell[data-theme="dark"] .message-form input,
+.app-shell[data-theme="dark"] .message-form select,
+.app-shell[data-theme="dark"] .message-form textarea { border-color: #4a443c; background: #191816; color: #eee8df; }
+
+@media (max-width: 760px) {
+  .message-compose-grid { grid-template-columns: 1fr; }
+  .message-history-heading { flex-wrap: wrap; }
+}
