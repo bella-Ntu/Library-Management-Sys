@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://library-management-sys-5im4.onrender.com/api/:path*"
+    }
+  ]
+}
