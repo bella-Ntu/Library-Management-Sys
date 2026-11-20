@@ -473,9 +473,15 @@ function App() {
           <span className="banner-index">EST. WITH A GOOD STORY — 2024</span>
         </section>
         <div className="stats-row">
-          <div className="stat-card"><span className="stat-label">IN THE COLLECTION</span><strong>{books.length}</strong><span>thoughtfully chosen titles</span></div>
-          <div className="stat-card"><span className="stat-label">{isAdmin ? "ON LOAN" : "ON YOUR NIGHTSTAND"}</span><strong>{isAdmin ? loans.filter((loan) => loan.status === "Borrowed").length : myLoans.length}</strong><span>{isAdmin ? "books with readers" : "books out for a read"}</span></div>
-          <div className="stat-card"><span className="stat-label">{isAdmin ? "TO YOUR INBOX" : "READY WHEN YOU ARE"}</span><strong>{isAdmin ? unreadRecommendations : books.filter((book) => book.copies > 0).length}</strong><span>{isAdmin ? "new book suggestions" : "books waiting to be borrowed"}</span></div>
+          <button type="button" className="stat-card" onClick={() => openPage(isAdmin ? "Collection" : "Browse books")} aria-label="Browse all books in the collection">
+            <span className="stat-label">IN THE COLLECTION</span><strong>{books.length}</strong><span>thoughtfully chosen titles</span>
+          </button>
+          <button type="button" className="stat-card" onClick={() => openPage(isAdmin ? "All loans" : "My loans")} aria-label={isAdmin ? "View all borrowed books" : "View your borrowed books"}>
+            <span className="stat-label">{isAdmin ? "ON LOAN" : "ON YOUR NIGHTSTAND"}</span><strong>{isAdmin ? loans.filter((loan) => loan.status === "Borrowed").length : myLoans.length}</strong><span>{isAdmin ? "books with readers" : "books out for a read"}</span>
+          </button>
+          <button type="button" className="stat-card" onClick={() => openPage(isAdmin ? "Inbox" : "Browse books")} aria-label={isAdmin ? "Open inbox to review reader book recommendations" : "Browse books available to borrow"}>
+            <span className="stat-label">{isAdmin ? "TO YOUR INBOX" : "READY WHEN YOU ARE"}</span><strong>{isAdmin ? unreadRecommendations : books.filter((book) => book.copies > 0).length}</strong><span>{isAdmin ? "new book suggestions" : "books waiting to be borrowed"}</span>
+          </button>
         </div>
         {!isAdmin && myLoans.length > 0 && (
           <section className="section-block">

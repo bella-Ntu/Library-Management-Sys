@@ -560,3 +560,99 @@ body { font-size: 16px; }
 .app-shell[data-theme="dark"] .api-notice strong { color: #f3dfc1; }
 .app-shell[data-theme="dark"] .api-notice > span { color: #d4bea0; }
 .app-shell[data-theme="dark"] .empty-icon { background: #383127; color: #d4b28b; }
+
+.sidebar-label,
+.sidebar-note > span:last-child,
+.profile-copy span,
+.profile-card > svg,
+.breadcrumb > span,
+.breadcrumb svg,
+.breadcrumb strong,
+.role-picker,
+.role-picker select,
+.eyebrow,
+.heading-note,
+.welcome-copy p,
+.stat-label,
+.stat-card > span:last-child,
+.book-author,
+.collection-intro > div > p,
+.search-field,
+.search-field input::placeholder,
+.genre-chip,
+.results-caption,
+.featured-empty p,
+.empty-state p,
+.loan-mini small,
+.recommendation-card p,
+.recommendation-card small,
+.quiet-note,
+.loan-row-copy p,
+.loan-due span,
+.page-footer,
+.modal-author,
+.modal-description,
+.modal-meta span,
+.form-modal-header p,
+.loan-details-list dt,
+.optional-label,
+.login-hint {
+  color: #62594f;
+}
+
+.text-link { color: #654623; }
+.book-genre { color: #6d5943; }
+.availability { color: #536146; }
+.availability.unavailable { color: #874a35; }
+.request-status { color: #574b3e; }
+.request-status.new { color: #704815; }
+.request-status.approved { color: #465a36; }
+.request-status.archived { color: #5e5852; }
+
+.app-shell[data-theme="dark"] .sidebar-label,
+.app-shell[data-theme="dark"] .sidebar-note > span:last-child,
+.app-shell[data-theme="dark"] .profile-copy span,
+.app-shell[data-theme="dark"] .profile-card > svg,
+.app-shell[data-theme="dark"] .breadcrumb > span,
+.app-shell[data-theme="dark"] .breadcrumb svg,
+.app-shell[data-theme="dark"] .breadcrumb strong,
+.app-shell[data-theme="dark"] .role-picker,
+.app-shell[data-theme="dark"] .role-picker select,
+.app-shell[data-theme="dark"] .eyebrow,
+.app-shell[data-theme="dark"] .heading-note,
+.app-shell[data-theme="dark"] .welcome-copy p,
+.app-shell[data-theme="dark"] .stat-label,
+.app-shell[data-theme="dark"] .stat-card > span:last-child,
+.app-shell[data-theme="dark"] .book-author,
+.app-shell[data-theme="dark"] .collection-intro > div > p,
+.app-shell[data-theme="dark"] .search-field,
+.app-shell[data-theme="dark"] .search-field input::placeholder,
+.app-shell[data-theme="dark"] .genre-chip,
+.app-shell[data-theme="dark"] .results-caption,
+.app-shell[data-theme="dark"] .featured-empty p,
+.app-shell[data-theme="dark"] .empty-state p,
+.app-shell[data-theme="dark"] .loan-mini small,
+.app-shell[data-theme="dark"] .recommendation-card p,
+.app-shell[data-theme="dark"] .recommendation-card small,
+.app-shell[data-theme="dark"] .quiet-note,
+.app-shell[data-theme="dark"] .loan-row-copy p,
+.app-shell[data-theme="dark"] .loan-due span,
+.app-shell[data-theme="dark"] .page-footer,
+.app-shell[data-theme="dark"] .modal-author,
+.app-shell[data-theme="dark"] .modal-description,
+.app-shell[data-theme="dark"] .modal-meta span,
+.app-shell[data-theme="dark"] .form-modal-header p,
+.app-shell[data-theme="dark"] .loan-details-list dt,
+.app-shell[data-theme="dark"] .optional-label,
+.app-shell[data-theme="dark"] .login-hint {
+  color: #c9c1b6;
+}
+
+.app-shell[data-theme="dark"] .text-link { color: #dfbd98; }
+.app-shell[data-theme="dark"] .book-genre,
+.app-shell[data-theme="dark"] .availability { color: #dfbd98; }
+.app-shell[data-theme="dark"] .availability.unavailable { color: #e2a38d; }
+.app-shell[data-theme="dark"] .request-status { color: #e2d5c4; }
+.app-shell[data-theme="dark"] .request-status.new { color: #f0d09f; }
+.app-shell[data-theme="dark"] .request-status.approved { color: #c8d8b2; }
+.app-shell[data-theme="dark"] .request-status.archived { color: #c1b9b0; }
